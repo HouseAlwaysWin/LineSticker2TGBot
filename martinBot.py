@@ -2,7 +2,7 @@ import logging
 import requests
 import shutil
 import zipfile
-
+import struct
 import os
 import re
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
@@ -31,7 +31,7 @@ def help(update, context):
 def echo(update, context):
     """Echo the user message."""
     update.message.reply_text(update.message.text)
-    emo = 0x1f601;
+    emo = 0x1f601
     a = chr(emo).encode('utf-16')
     print(a)
 
@@ -52,11 +52,16 @@ def download(update, context):
     with zipfile.ZipFile('./img.zip', 'r') as zip_ref:
         zip_ref.extractall(path)
     imglist = os.listdir('./imgs')
+
+    emoji = 0x1f601
+    count = 0
     for img in imglist:
         if re.match('^\d+@2x.png', img):
             im = Image.open(f'./imgs/{img}')
             im_resize = im.resize((512, 512))
             im_resize.save(f'./imgs/{img}')
+            emostr = struct.pack('<I', emoji+count).decode('utf-32le')
+            count += 1
 
 
 def main():
@@ -90,5 +95,11 @@ def main():
     updater.idle()
 
 
+def test():
+    emoji = 0x1f601
+    import struct
+    emostr = struct.pack('<I', emoji).decode('utf-32le')
+
+
 if __name__ == '__main__':
-    main()
+    test()
