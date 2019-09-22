@@ -9,6 +9,7 @@ import traceback
 import uuid
 import subprocess
 import configparser
+import glob
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, ConversationHandler
 from telegram import Sticker
 from PIL import Image
@@ -46,7 +47,9 @@ def line_sticker_transfer(update, context):
         lid = re.search('\d+', update.message.text).group(0)
         if not lid:
             return LINEREPLY
+
         sticker_url = config["Default"]["LineStickerUrl"]
+
         response = requests.get(
             sticker_url.format(lid), stream=True)
         with open("img.zip", 'wb') as out_file:
@@ -59,19 +62,30 @@ def line_sticker_transfer(update, context):
         with zipfile.ZipFile('img.zip', 'r') as zip_ref:
             zip_ref.extractall(tmp_path)
         os.remove('img.zip')
-        imglist = os.listdir(tmp_path)
+        imglist = [img for img in os.listdir(
+            tmp_path) if re.match('^\d+@2x.png', img)]
 
+        update.message.reply_text(
+            "Start tranfer...")
         files = []
+        total_img = len(imglist)
+        img_count = 0
         for img in imglist:
-            if re.match('^\d+@2x.png', img):
-                im = Image.open(f'{tmp_path}/{img}')
-                im_resize = im.resize((512, 512))
-                im_resize.save(f'{tmp_path}/{img}')
-                with open(f'{tmp_path}/{img}', 'rb') as png_sticker:
-                    file = context.bot.upload_sticker_file(
-                        user_id=update.message.chat_id,
-                        png_sticker=png_sticker)
-                    files.append(file)
+
+            # if re.match('^\d+@2x.png', img):
+            update.message.reply_text(
+                f"proecssing...{'%.2f' % ((img_count/total_img)*100)}")
+
+            im = Image.open(f'{tmp_path}/{img}')
+            im_resize = im.resize((512, 512))
+            im_resize.save(f'{tmp_path}/{img}')
+
+            with open(f'{tmp_path}/{img}', 'rb') as png_sticker:
+                file = context.bot.upload_sticker_file(
+                    user_id=update.message.chat_id,
+                    png_sticker=png_sticker)
+                files.append(file)
+                img_count += 1
         shutil.rmtree(tmp_path)
 
         emoji = 0x1f601
@@ -118,14 +132,6 @@ def line_sticker_transfer_default(update, context):
     return LINE
 
 
-def line_sticker_transfer_success(update, context):
-    update.message.reply_text(
-        "Transfer Success",
-        reply_markup=markup
-    )
-    return ConversationHandler.END
-
-
 def line_sticker_transfer_failed(update, context):
     update.message.reply_text(
         "Please give a correct link !!",
@@ -167,8 +173,6 @@ def main():
                 MessageHandler(Filters.text, line_sticker_transfer_default)
             ],
             LINEREPLY: [
-                MessageHandler(Filters.regex('^(Success)$'),
-                               line_sticker_transfer_success),
                 MessageHandler(Filters.regex('^(Failed)$'),
                                line_sticker_transfer_failed)
             ]
