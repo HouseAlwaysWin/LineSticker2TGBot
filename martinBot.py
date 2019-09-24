@@ -44,14 +44,14 @@ start_markup = {}
 def set_start_keyboard():
     global start_markup
     start_markup = InlineKeyboardMarkup(
-    [
-        [InlineKeyboardButton(
-            current_lang["line_sticker_transfer_btn"], callback_data=str(LINE)),
-         InlineKeyboardButton(
-            current_lang["language_setting"], callback_data=str(LANG)),
-         InlineKeyboardButton(
-            current_lang["cancel"], callback_data=str(CANCEL))]
-    ])
+        [
+            [InlineKeyboardButton(
+                current_lang["line_sticker_transfer_btn"], callback_data=str(LINE)),
+                InlineKeyboardButton(
+                current_lang["language_setting"], callback_data=str(LANG)),
+                InlineKeyboardButton(
+                current_lang["cancel"], callback_data=str(CANCEL))]
+        ])
 
 
 def start(update, context):
@@ -144,7 +144,7 @@ def line_sticker_transfer(update, context):
         img_count = 0
 
         update_msg = update.message.reply_text(
-            current_lang["transfer_proecssing_start"]
+            current_lang["transfer_processing_start"]
         )
         for img in imglist:
 
@@ -159,11 +159,11 @@ def line_sticker_transfer(update, context):
                 files.append(file)
                 img_count += 1
                 context.bot.edit_message_text(
-                chat_id=update_msg.chat_id,
-                message_id=update_msg.message_id,
-                # text=f"Transfer processing...{'%.2f' % ((img_count/total_img)*100)}%\n轉換中...{'%.2f' % ((img_count/total_img)*100)}%"
-                text=current_lang["transfer_proecssing"].format('%.2f' % ((img_count/total_img)*100)
-                ))
+                    chat_id=update_msg.chat_id,
+                    message_id=update_msg.message_id,
+                    # text=f"Transfer processing...{'%.2f' % ((img_count/total_img)*100)}%\n轉換中...{'%.2f' % ((img_count/total_img)*100)}%"
+                    text=current_lang["transfer_proecssing"].format('%.2f' % ((img_count/total_img)*100)
+                                                                    ))
 
         shutil.rmtree(tmp_path)
 
@@ -210,23 +210,34 @@ def line_sticker_transfer(update, context):
         return SECOND
 
 
-def set_line_sticker_title(update, context):
-    update.message.reply_text(
-        chat_id=query.message.chat_id,
-        message_id=query.message.message_id,
+def ask_set_line_sticker_title(update, context):
+    context.bot.edit_message_text(
+        chat_id=update.callback_query.message.chat_id,
+        message_id=update.callback_query.message.message_id,
         text=current_lang["send_me_line_sticker_title"],
-    )
-    return FIRST
-
-def set_line_sticker_title_error(update,context):
-    bot.send_message(
-        chat_id=query.message.chat_id,
-        message_id=query.message.message_id,
-        text=current_lang["send_me_line_sticker_title_error"],
     )
     return SETSTICKER_NAME
 
 
+def set_line_sticker_title(update, context):
+    global temp_sticker_title
+    temp_sticker_title = update.message.text
+    context.bot.send_message(
+        chat_id=update.message.chat_id,
+        message_id=update.message.message_id,
+        text=current_lang["send_me_line_sticker_msg"],
+    )
+
+    return SECOND
+
+
+def set_line_sticker_title_error(update, context):
+    context.bot.send_message(
+        chat_id=update.message.chat_id,
+        message_id=update.message.message_id,
+        text=current_lang["send_me_line_sticker_title_error"],
+    )
+    return SETSTICKER_NAME
 
 
 def line_sticker(update, context):
@@ -269,11 +280,11 @@ def main():
         states={
             FIRST: [
                 CallbackQueryHandler(
-                    set_line_sticker_name, pattern='^' + str(LINE) + '$'),
+                    ask_set_line_sticker_title, pattern='^' + str(LINE) + '$'),
                 CallbackQueryHandler(
                     lang_choose, pattern='^' + str(LANG) + '$'),
                 CallbackQueryHandler(cancel, pattern='^' + str(CANCEL) + '$'),
-                ],
+            ],
             SECOND: [
                 MessageHandler(
                     Filters.regex('^https://store.line.me/stickershop/product/\d+/.*'), line_sticker_transfer),
@@ -284,11 +295,12 @@ def main():
                 CallbackQueryHandler(set_lang, pattern='.*'),
             ],
             SETSTICKER_NAME: [
-                MessageHandler(Filters.regex('\w{20}'), set_line_sticker_name),
-                MessageHandler(Filters.regex('.*'), set_line_sticker_name_error)],
-            ]
+                MessageHandler(Filters.regex(
+                    '^.{1,20}$'), set_line_sticker_title),
+                MessageHandler(Filters.text, set_line_sticker_title_error),
+            ],
         },
-        fallbacks = [CommandHandler('start', start)],
+        fallbacks=[CommandHandler('start', start)],
     )
 
     dp.add_handler(conv_handler)
