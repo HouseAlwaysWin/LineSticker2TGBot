@@ -17,7 +17,7 @@ from PIL import Image
 from telegram import (ReplyKeyboardMarkup, ReplyKeyboardRemove,
                       InlineKeyboardButton, InlineKeyboardMarkup)
 
-
+# Language Setting
 lang = {}
 with open('lang.json', 'r', encoding='utf-8') as l:
     lang = json.load(l)
@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 config = configparser.ConfigParser()
 config.read("config.ini")
 
-SETSTICKER_NAME, FIRST, SECOND, SETLANG = range(4)
+SET_STICKER_TITLE, MENU, LINE_STICKER_TRANSFER, SET_LANG = range(4)
 
 LINE, CANCEL, LANG, BACK = range(4)
 
@@ -49,20 +49,22 @@ def set_start_keyboard():
                 current_lang["line_sticker_transfer_btn"], callback_data=str(LINE)),
                 InlineKeyboardButton(
                 current_lang["language_setting"], callback_data=str(LANG)),
-                InlineKeyboardButton(
-                current_lang["cancel"], callback_data=str(CANCEL))]
+             ]
         ])
 
 
 def start(update, context):
     user = update.message.from_user
+    global current_lang
+    if update.effective_user.language_code in lang:
+        current_lang = lang[update.effective_user.language_code]
 
     set_start_keyboard()
     update.message.reply_text(
         current_lang["start_msg"],
         reply_markup=start_markup
     )
-    return FIRST
+    return MENU
 
 
 def lang_choose(update, context):
@@ -70,9 +72,9 @@ def lang_choose(update, context):
         [InlineKeyboardButton(
             current_lang["english"], callback_data="en"),
          InlineKeyboardButton(
-            current_lang["chinese"], callback_data="zh-tw"),
+            current_lang["chinese"], callback_data="zh-hant"),
          InlineKeyboardButton(
-            current_lang["back"], callback_data="^"+str(BACK)+"$")]
+            current_lang["back"], callback_data=str(BACK))]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -82,7 +84,7 @@ def lang_choose(update, context):
         text=current_lang["choose_lang"],
         reply_markup=reply_markup
     )
-    return SETLANG
+    return SET_LANG
 
 
 def set_lang(update, context):
@@ -98,7 +100,7 @@ def set_lang(update, context):
         text=current_lang["start_msg"],
         reply_markup=start_markup
     )
-    return FIRST
+    return MENU
 
 
 def back_to_start(update, context):
@@ -110,14 +112,14 @@ def back_to_start(update, context):
         reply_markup=start_markup
     )
 
-    return FIRST
+    return MENU
 
 
 def line_sticker_transfer(update, context):
     try:
         lid = re.search('\d+', update.message.text).group(0)
         if not lid:
-            return SECOND
+            return LINE_STICKER_TRANSFER
 
         sticker_url = config["Default"]["LineStickerUrl"]
 
@@ -162,10 +164,10 @@ def line_sticker_transfer(update, context):
                     chat_id=update_msg.chat_id,
                     message_id=update_msg.message_id,
                     # text=f"Transfer processing...{'%.2f' % ((img_count/total_img)*100)}%\n轉換中...{'%.2f' % ((img_count/total_img)*100)}%"
-                    text=current_lang["transfer_proecssing"].format('%.2f' % ((img_count/total_img)*100)
+                    text=current_lang["transfer_processing"].format('%.2f' % ((img_count/total_img)*100)
                                                                     ))
 
-        shutil.rmtree(tmp_path)
+        shutil.rmtree('./imgs/')
 
         emoji = 0x1f601
         emostr = struct.pack('<I', emoji).decode('utf-32le')
@@ -198,46 +200,65 @@ def line_sticker_transfer(update, context):
         context.bot.edit_message_text(
             chat_id=update_msg.chat_id,
             message_id=update_msg.message_id,
-            text=current_lang["finish_transfer"])
+            text=current_lang["transfer_finish"])
 
         context.bot.send_sticker(
             chat_id=update.message.chat_id,
             sticker=sticker.file_id
         )
-
+        return MENU
     except:
         traceback.print_exc()
-        return SECOND
+        return LINE_STICKER_TRANSFER
 
 
 def ask_set_line_sticker_title(update, context):
+
+    back_markup = InlineKeyboardMarkup(
+        [
+            [InlineKeyboardButton(
+                current_lang["back"], callback_data=str(BACK))]
+        ])
     context.bot.edit_message_text(
         chat_id=update.callback_query.message.chat_id,
         message_id=update.callback_query.message.message_id,
-        text=current_lang["send_me_line_sticker_title"],
+        text=current_lang["ask_set_line_sticker_title"],
+        reply_markup=back_markup
     )
-    return SETSTICKER_NAME
+    return SET_STICKER_TITLE
 
 
 def set_line_sticker_title(update, context):
     global temp_sticker_title
     temp_sticker_title = update.message.text
+    back_markup = InlineKeyboardMarkup(
+        [
+            [InlineKeyboardButton(
+                current_lang["back"], callback_data=str(BACK))]
+        ])
     context.bot.send_message(
         chat_id=update.message.chat_id,
         message_id=update.message.message_id,
-        text=current_lang["send_me_line_sticker_msg"],
+        text=current_lang["send_me_line_sticker_url"],
+        reply_markup=back_markup
     )
 
-    return SECOND
+    return LINE_STICKER_TRANSFER
 
 
 def set_line_sticker_title_error(update, context):
+    back_markup = InlineKeyboardMarkup(
+        [
+            [InlineKeyboardButton(
+                current_lang["back"], callback_data=str(BACK))]
+        ])
     context.bot.send_message(
         chat_id=update.message.chat_id,
         message_id=update.message.message_id,
-        text=current_lang["send_me_line_sticker_title_error"],
+        text=current_lang["set_line_sticker_title_error"],
+        reply_markup=back_markup
     )
-    return SETSTICKER_NAME
+    return SET_STICKER_TITLE
 
 
 def line_sticker(update, context):
@@ -249,18 +270,14 @@ def line_sticker(update, context):
         text=current_lang["send_me_line_sticker_msg"],
     )
 
-    return SECOND
+    return LINE_STICKER_TRANSFER
 
 
 def line_sticker_error(update, context):
     update.message.reply_text(
         current_lang["give_me_correct_line_link"]
     )
-    return SECOND
-
-
-def cancel(update, context):
-    return ConversationHandler.END
+    return LINE_STICKER_TRANSFER
 
 
 def error(update, context):
@@ -278,26 +295,31 @@ def main():
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler('start', start)],
         states={
-            FIRST: [
+            MENU: [
                 CallbackQueryHandler(
                     ask_set_line_sticker_title, pattern='^' + str(LINE) + '$'),
                 CallbackQueryHandler(
                     lang_choose, pattern='^' + str(LANG) + '$'),
-                CallbackQueryHandler(cancel, pattern='^' + str(CANCEL) + '$'),
             ],
-            SECOND: [
+            LINE_STICKER_TRANSFER: [
                 MessageHandler(
                     Filters.regex('^https://store.line.me/stickershop/product/\d+/.*'), line_sticker_transfer),
-                MessageHandler(Filters.regex('^' + str(CANCEL) + '$'), cancel),
+                MessageHandler(
+                    Filters.regex('^https://store.line.me/officialaccount/event/sticker/\d+/.*'), line_sticker_transfer),
+                CallbackQueryHandler(
+                    back_to_start, pattern='^' + str(BACK) + '$'),
                 MessageHandler(Filters.regex('.*'), line_sticker_error)],
-            SETLANG: [
-                CallbackQueryHandler(back_to_start, pattern='^'+str(BACK)+'$'),
+            SET_LANG: [
+                CallbackQueryHandler(
+                    back_to_start, pattern='^' + str(BACK) + '$'),
                 CallbackQueryHandler(set_lang, pattern='.*'),
             ],
-            SETSTICKER_NAME: [
+            SET_STICKER_TITLE: [
                 MessageHandler(Filters.regex(
-                    '^.{1,20}$'), set_line_sticker_title),
+                    '^.{1,64}$'), set_line_sticker_title),
                 MessageHandler(Filters.text, set_line_sticker_title_error),
+                CallbackQueryHandler(
+                    back_to_start, pattern='^' + str(BACK) + '$')
             ],
         },
         fallbacks=[CommandHandler('start', start)],
