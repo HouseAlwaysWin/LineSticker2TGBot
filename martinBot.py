@@ -11,11 +11,15 @@ import subprocess
 import configparser
 import glob
 import json
+import base64
+import pickle
+from io import BytesIO, TextIOWrapper
+from urllib.request import urlopen
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, ConversationHandler, CallbackQueryHandler
 from telegram import Sticker
 from PIL import Image
 from telegram import (ReplyKeyboardMarkup, ReplyKeyboardRemove,
-                      InlineKeyboardButton, InlineKeyboardMarkup)
+                      InlineKeyboardButton, InlineKeyboardMarkup)       
 
 # Language Setting
 lang = {}
@@ -122,56 +126,74 @@ def line_sticker_transfer(update, context):
             return LINE_STICKER_TRANSFER
 
         sticker_url = config["Default"]["LineStickerUrl"]
-
-        response = requests.get(
+        resp = requests.get(
             sticker_url.format(lid), stream=True)
-        with open("img.zip", 'wb') as out_file:
-            shutil.copyfileobj(response.raw, out_file)
-        del response
-
-        tmp_path = f'./imgs/{str(uuid.uuid4()).replace("-","")}'
-        if not os.path.exists(tmp_path):
-            os.makedirs(tmp_path)
-        with zipfile.ZipFile('img.zip', 'r') as zip_ref:
-            zip_ref.extractall(tmp_path)
-        os.remove('img.zip')
-        imglist = [img for img in os.listdir(
-            tmp_path) if re.match('^\d+@2x.png', img)]
-
-        update.message.reply_text(
-            current_lang["start_transfering"]
-        )
+        # resp = urlopen(sticker_url.format(lid))
         files = []
-        total_img = len(imglist)
-        img_count = 0
+        with zipfile.ZipFile(BytesIO(resp.content)) as archive:
+            for entry in archive.infolist():
+                if re.match('^\d+@2x.png', entry.filename):
+                    with archive.open(entry) as file:
+                        img = Image.open(file)
+                        img_resize = img.resize((512, 512))
+                        buff = BytesIO()
+                        img_resize.save(buff,"png")
+                        buff.seek(0)
+                        file = context.bot.upload_sticker_file(
+                            user_id=update.message.chat_id,
+                            png_sticker=buff)
+                        files.append(file)
 
-        update_msg = update.message.reply_text(
-            current_lang["transfer_processing_start"]
-        )
-        for img in imglist:
+        # response = requests.get(
+        #     sticker_url.format(lid), stream=True)
+        # with open("img.zip", 'wb') as out_file:
+        #     shutil.copyfileobj(response.raw, out_file)
+        # del response
 
-            im = Image.open(f'{tmp_path}/{img}')
-            im_resize = im.resize((512, 512))
-            im_resize.save(f'{tmp_path}/{img}')
+        # tmp_path = f'./imgs/{str(uuid.uuid4()).replace("-","")}'
+        # if not os.path.exists(tmp_path):
+        #     os.makedirs(tmp_path)
+        # with zipfile.ZipFile('img.zip', 'r') as zip_ref:
+        #     zip_ref.extractall(tmp_path)
+        # os.remove('img.zip')
+        # imglist = [img for img in os.listdir(
+        #     tmp_path) if re.match('^\d+@2x.png', img)]
 
-            with open(f'{tmp_path}/{img}', 'rb') as png_sticker:
-                file = context.bot.upload_sticker_file(
-                    user_id=update.message.chat_id,
-                    png_sticker=png_sticker)
-                files.append(file)
-                img_count += 1
-                context.bot.edit_message_text(
-                    chat_id=update_msg.chat_id,
-                    message_id=update_msg.message_id,
-                    # text=f"Transfer processing...{'%.2f' % ((img_count/total_img)*100)}%\n轉換中...{'%.2f' % ((img_count/total_img)*100)}%"
-                    text=current_lang["transfer_processing"].format('%.2f' % ((img_count/total_img)*100)
-                                                                    ))
+        # update.message.reply_text(
+        #     current_lang["start_transfering"]
+        # )
+        # files = []
+        # total_img = len(imglist)
+        # img_count = 0
 
-        shutil.rmtree('./imgs/')
+        # update_msg = update.message.reply_text(
+        #     current_lang["transfer_processing_start"]
+        # )
+        # for img in imglist:
+
+        #     im = Image.open(f'{tmp_path}/{img}')
+        #     im_resize = im.resize((512, 512))
+        #     im_resize.save(f'{tmp_path}/{img}')
+
+        #     with open(f'{tmp_path}/{img}', 'rb') as png_sticker:
+        #         file = context.bot.upload_sticker_file(
+        #             user_id=update.message.chat_id,
+        #             png_sticker=png_sticker)
+        #         files.append(file)
+        #         img_count += 1
+        #         context.bot.edit_message_text(
+        #             chat_id=update_msg.chat_id,
+        #             message_id=update_msg.message_id,
+        #             # text=f"Transfer processing...{'%.2f' % ((img_count/total_img)*100)}%\n轉換中...{'%.2f' % ((img_count/total_img)*100)}%"
+        #             text=current_lang["transfer_processing"].format('%.2f' % ((img_count/total_img)*100)
+        #                                                             ))
+
+        # shutil.rmtree('./imgs/')
 
         emoji = 0x1f601
         emostr = struct.pack('<I', emoji).decode('utf-32le')
-        tempName = f"bot{str(uuid.uuid4()).replace('-', '')}_by_martinwangBot"
+        botname = config["Default"]["BotName"]
+        tempName = f"bot{str(uuid.uuid4()).replace('-', '')}_by_{botname}"
         context.bot.create_new_sticker_set(
             user_id=update.message.chat_id,
             name=tempName,
@@ -197,10 +219,10 @@ def line_sticker_transfer(update, context):
 
         sticker = stickerSet.stickers[0]
 
-        context.bot.edit_message_text(
-            chat_id=update_msg.chat_id,
-            message_id=update_msg.message_id,
-            text=current_lang["transfer_finish"])
+        # context.bot.edit_message_text(
+        #     chat_id=update_msg.chat_id,
+        #     message_id=update_msg.message_id,
+        #     text=current_lang["transfer_finish"])
 
         context.bot.send_sticker(
             chat_id=update.message.chat_id,
@@ -209,7 +231,7 @@ def line_sticker_transfer(update, context):
         return MENU
     except:
         traceback.print_exc()
-        return LINE_STICKER_TRANSFER
+        return MENU
 
 
 def ask_set_line_sticker_title(update, context):
