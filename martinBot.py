@@ -16,6 +16,7 @@ import pickle
 from io import BytesIO, TextIOWrapper
 from urllib.request import urlopen
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, ConversationHandler, CallbackQueryHandler
+from telegram.ext.dispatcher import run_async
 from telegram import Sticker
 from PIL import Image
 from telegram import (ReplyKeyboardMarkup, ReplyKeyboardRemove,
@@ -68,7 +69,7 @@ def start(update, context):
     )
     return MENU
 
-
+@run_async
 def lang_choose(update, context):
     keyboard = [
         [InlineKeyboardButton(
@@ -88,7 +89,7 @@ def lang_choose(update, context):
     )
     return SET_LANG
 
-
+@run_async
 def set_lang(update, context):
     lang_val = update.callback_query.data
     global current_lang
@@ -104,7 +105,7 @@ def set_lang(update, context):
     )
     return MENU
 
-
+@run_async
 def back_to_start(update, context):
 
     context.bot.edit_message_text(
@@ -116,7 +117,7 @@ def back_to_start(update, context):
 
     return MENU
 
-
+@run_async
 def line_sticker_transfer(update, context):
     try:
         lid = re.search('\d+', update.message.text).group(0)
@@ -209,7 +210,7 @@ def line_sticker_transfer(update, context):
         traceback.print_exc()
         return MENU
 
-
+@run_async
 def ask_set_line_sticker_title(update, context):
 
     back_markup = InlineKeyboardMarkup(
@@ -225,7 +226,7 @@ def ask_set_line_sticker_title(update, context):
     )
     return SET_STICKER_TITLE
 
-
+@run_async
 def set_line_sticker_title(update, context):
     
     user_data = context.user_data
@@ -245,7 +246,7 @@ def set_line_sticker_title(update, context):
 
     return LINE_STICKER_TRANSFER
 
-
+@run_async
 def set_line_sticker_title_error(update, context):
     back_markup = InlineKeyboardMarkup(
         [
@@ -260,7 +261,7 @@ def set_line_sticker_title_error(update, context):
     )
     return SET_STICKER_TITLE
 
-
+@run_async
 def line_sticker(update, context):
     query = update.callback_query
     bot = context.bot
@@ -330,13 +331,14 @@ def main():
     dp.add_handler(conv_handler)
     dp.add_error_handler(error)
 
-    # updater.start_polling()
-    updater.start_webhook(listen="0.0.0.0",
-                          port=port,
-                          url_path=token)
+    if not webhook:
+        updater.start_polling()
+    else:
+        updater.start_webhook(listen="0.0.0.0",
+                            port=port,
+                            url_path=token)
+        updater.bot.set_webhook(webhook + token)
 
-
-    updater.bot.set_webhook(webhook + token)
     updater.idle()
 
 
