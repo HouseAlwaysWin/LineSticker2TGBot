@@ -14,6 +14,10 @@
         "transfer_processing_start": "Processing...0.00%",
         "transfer_processing": "Transfer processing...{0}%",
         "transfer_finish": "Finish transfer...100%",
+        "start_uploading": "Start upload stickers...0.00%",
+        "upload_processing": "Upload processing...{0}%",
+        "finish_uploading": "Upload finished...100%",
+        "finish_msg":"Here you go:",
         "back": "Back",
         "cancel": "Cancel"
     },
@@ -32,6 +36,10 @@
         "transfer_processing_start": "轉換中...0.00%",
         "transfer_processing": "轉換中...{0}%",
         "transfer_finish": "轉換完成...100%",
+        "start_uploading": "開始上傳貼圖...0.00%",
+        "upload_processing": "上傳中...{0}%",
+        "finish_uploading": "上傳完成...100%",
+        "finish_msg": "你的貼圖:",
         "back": "返回",
         "cancel": "取消"
     }
