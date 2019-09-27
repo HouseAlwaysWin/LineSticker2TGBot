@@ -133,7 +133,7 @@ def line_sticker_transfer(update, context):
             current_lang["start_transfering"])
 
         with zipfile.ZipFile(BytesIO(resp.content)) as archive:
-            file_list = [file for file in archive.infolist() if re.match('^\d+@2x.png', entry.filename)]
+            file_list = [file for file in archive.infolist() if re.match('^\d+@2x.png', file.filename)]
             total_process_count = len(file_list)
             transfer_processing_start = update.message.reply_text(
                 current_lang["transfer_processing_start"])
@@ -150,8 +150,8 @@ def line_sticker_transfer(update, context):
                         files.append(file)
                         process_count += 1
                         context.bot.edit_message_text(
-                            chat_id=transfer_processing.chat_id,
-                            message_id=transfer_processing.message_id,
+                            chat_id=transfer_processing_start.chat_id,
+                            message_id=transfer_processing_start.message_id,
                             text=current_lang["transfer_processing"].format('%.2f' % ((process_count/total_process_count)*100))
                         )
         update.message.reply_text(
@@ -160,7 +160,7 @@ def line_sticker_transfer(update, context):
         emostr = struct.pack('<I', emoji).decode('utf-32le')
         botname = config["Default"]["BotName"]
         tempName = f"bot{str(uuid.uuid4()).replace('-', '')}_by_{botname}"
-        
+        user_data = context.user_data
         context.bot.create_new_sticker_set(
             user_id=update.message.chat_id,
             name=tempName,
@@ -170,7 +170,7 @@ def line_sticker_transfer(update, context):
         )
         del user_data['line_sticker_title']
         start_upload_msg = update.message.reply_text(
-            current_lang["start_uploading"]
+            current_lang["start_uploading"])
 
         upload_process_count = 0
         upload_process_total = len(files)
