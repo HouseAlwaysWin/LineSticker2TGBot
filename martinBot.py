@@ -291,7 +291,7 @@ def main():
     port = int(os.environ.get('PORT', '8443'))
     webhook = config["Default"]["WebhookUrl"]
     updater = Updater(
-        token, use_context=True,worker=32)
+        token, use_context=True,workers=32)
 
     dp = updater.dispatcher
 
