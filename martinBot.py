@@ -306,9 +306,11 @@ def main():
             ],
             LINE_STICKER_TRANSFER: [
                 MessageHandler(
-                    Filters.regex('^https://store.line.me/stickershop/product/\d+/.*'), line_sticker_transfer),
+                    Filters.regex('https://store.line.me/stickershop/product/\d+/.*'), line_sticker_transfer),
                 MessageHandler(
-                    Filters.regex('^https://store.line.me/officialaccount/event/sticker/\d+/.*'), line_sticker_transfer),
+                    Filters.regex('https://store.line.me/officialaccount/event/sticker/\d+/.*'), line_sticker_transfer),
+                MessageHandler(
+                    Filters.regex('https://line.me/S/sticker/\d+/.*'), line_sticker_transfer),
                 CallbackQueryHandler(
                     back_to_start, pattern='^' + str(BACK) + '$'),
                 MessageHandler(Filters.regex('.*'), line_sticker_error)],
