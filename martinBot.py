@@ -43,7 +43,7 @@ LINE, CANCEL, LANG, BACK = range(4)
 
 start_markup = {}
 
-
+@run_async
 def set_start_keyboard():
     global start_markup
     start_markup = InlineKeyboardMarkup(
@@ -273,14 +273,14 @@ def line_sticker(update, context):
 
     return LINE_STICKER_TRANSFER
 
-
+@run_async
 def line_sticker_error(update, context):
     update.message.reply_text(
         current_lang["give_me_correct_line_link"]
     )
     return LINE_STICKER_TRANSFER
 
-
+@run_async
 def error(update, context):
     """Log Errors caused by Updates."""
     logger.warning('Update "%s" caused error "%s"', update, context.error)
@@ -291,7 +291,7 @@ def main():
     port = int(os.environ.get('PORT', '8443'))
     webhook = config["Default"]["WebhookUrl"]
     updater = Updater(
-        token, use_context=True)
+        token, use_context=True,worker=32)
 
     dp = updater.dispatcher
 
