@@ -20,7 +20,7 @@ from telegram.ext.dispatcher import run_async
 from telegram import Sticker
 from PIL import Image
 from telegram import (ReplyKeyboardMarkup, ReplyKeyboardRemove,
-                      InlineKeyboardButton, InlineKeyboardMarkup)       
+                      InlineKeyboardButton, InlineKeyboardMarkup)
 
 # Language Setting
 lang = {}
@@ -43,7 +43,7 @@ LINE, CANCEL, LANG, BACK = range(4)
 
 start_markup = {}
 
-@run_async
+
 def set_start_keyboard():
     global start_markup
     start_markup = InlineKeyboardMarkup(
@@ -56,6 +56,7 @@ def set_start_keyboard():
         ])
 
 
+@run_async
 def start(update, context):
     user = update.message.from_user
     global current_lang
@@ -68,6 +69,7 @@ def start(update, context):
         reply_markup=start_markup
     )
     return MENU
+
 
 @run_async
 def lang_choose(update, context):
@@ -89,6 +91,7 @@ def lang_choose(update, context):
     )
     return SET_LANG
 
+
 @run_async
 def set_lang(update, context):
     lang_val = update.callback_query.data
@@ -105,6 +108,7 @@ def set_lang(update, context):
     )
     return MENU
 
+
 @run_async
 def back_to_start(update, context):
 
@@ -117,44 +121,58 @@ def back_to_start(update, context):
 
     return MENU
 
+
 @run_async
 def line_sticker_transfer(update, context):
     try:
-        lid = re.search('\d+', update.message.text).group(0)
-        if not lid:
+        nums = re.findall('\d+', update.message.text)
+        if len(nums) == 0:
             return LINE_STICKER_TRANSFER
 
         sticker_url = config["Default"]["LineStickerUrl"]
-        resp = requests.get(
-            sticker_url.format(lid), stream=True)
-        
+        resp = ''
+        lid = 0
+        for num in nums:
+            resp = requests.get(
+                sticker_url.format(num), stream=True)
+            if resp.status_code == 200:
+                lid = num
+                break
+        if not lid:
+            update.message.reply_text(
+                current_lang["give_me_correct_line_link"]
+            )
+            return LINE_STICKER_TRANSFER
+
         files = []
         process_count = 0
         update.message.reply_text(
             current_lang["start_transfering"])
 
         with zipfile.ZipFile(BytesIO(resp.content)) as archive:
-            file_list = [file for file in archive.infolist() if re.match('^\d+@2x.png', file.filename)]
+            file_list = [file for file in archive.infolist(
+            ) if re.match('^\d+@2x.png', file.filename)]
             total_process_count = len(file_list)
             transfer_processing_start = update.message.reply_text(
                 current_lang["transfer_processing_start"])
             for entry in file_list:
                 with archive.open(entry) as file:
-                        img = Image.open(file)
-                        img_resize = img.resize((512, 512))
-                        buff = BytesIO()
-                        img_resize.save(buff,"png")
-                        buff.seek(0)
-                        file = context.bot.upload_sticker_file(
-                            user_id=update.message.chat_id,
-                            png_sticker=buff)
-                        files.append(file)
-                        process_count += 1
-                        context.bot.edit_message_text(
-                            chat_id=transfer_processing_start.chat_id,
-                            message_id=transfer_processing_start.message_id,
-                            text=current_lang["transfer_processing"].format('%.2f' % ((process_count/total_process_count)*100))
-                        )
+                    img = Image.open(file)
+                    img_resize = img.resize((512, 512))
+                    buff = BytesIO()
+                    img_resize.save(buff, "png")
+                    buff.seek(0)
+                    file = context.bot.upload_sticker_file(
+                        user_id=update.message.chat_id,
+                        png_sticker=buff)
+                    files.append(file)
+                    process_count += 1
+                    context.bot.edit_message_text(
+                        chat_id=transfer_processing_start.chat_id,
+                        message_id=transfer_processing_start.message_id,
+                        text=current_lang["transfer_processing"].format(
+                            '%.2f' % ((process_count/total_process_count)*100))
+                    )
         update.message.reply_text(
             current_lang["transfer_finish"])
         emoji = 0x1f601
@@ -176,7 +194,8 @@ def line_sticker_transfer(update, context):
         upload_process_count = 0
         upload_process_total = len(files)
         for file in files:
-            emostr = struct.pack('<I', emoji+upload_process_count).decode('utf-32le')
+            emostr = struct.pack(
+                '<I', emoji+upload_process_count).decode('utf-32le')
             context.bot.add_sticker_to_set(
                 user_id=update.message.chat_id,
                 name=tempName,
@@ -185,10 +204,10 @@ def line_sticker_transfer(update, context):
             )
             upload_process_count += 1
             context.bot.edit_message_text(
-                            chat_id=start_upload_msg.chat_id,
-                            message_id=start_upload_msg.message_id,
-                            text=current_lang["upload_processing"].format('%.2f' % ((upload_process_count/upload_process_total)*100)
-                            ))
+                chat_id=start_upload_msg.chat_id,
+                message_id=start_upload_msg.message_id,
+                text=current_lang["upload_processing"].format('%.2f' % ((upload_process_count/upload_process_total)*100)
+                                                              ))
         update.message.reply_text(
             current_lang["finish_uploading"])
 
@@ -210,6 +229,7 @@ def line_sticker_transfer(update, context):
         traceback.print_exc()
         return MENU
 
+
 @run_async
 def ask_set_line_sticker_title(update, context):
 
@@ -226,9 +246,10 @@ def ask_set_line_sticker_title(update, context):
     )
     return SET_STICKER_TITLE
 
+
 @run_async
 def set_line_sticker_title(update, context):
-    
+
     user_data = context.user_data
     user_data['line_sticker_title'] = update.message.text
 
@@ -246,6 +267,7 @@ def set_line_sticker_title(update, context):
 
     return LINE_STICKER_TRANSFER
 
+
 @run_async
 def set_line_sticker_title_error(update, context):
     back_markup = InlineKeyboardMarkup(
@@ -261,6 +283,7 @@ def set_line_sticker_title_error(update, context):
     )
     return SET_STICKER_TITLE
 
+
 @run_async
 def line_sticker(update, context):
     query = update.callback_query
@@ -273,12 +296,14 @@ def line_sticker(update, context):
 
     return LINE_STICKER_TRANSFER
 
+
 @run_async
 def line_sticker_error(update, context):
     update.message.reply_text(
         current_lang["give_me_correct_line_link"]
     )
     return LINE_STICKER_TRANSFER
+
 
 @run_async
 def error(update, context):
@@ -291,7 +316,7 @@ def main():
     port = int(os.environ.get('PORT', '8443'))
     webhook = config["Default"]["WebhookUrl"]
     updater = Updater(
-        token, use_context=True,workers=32)
+        token, use_context=True, workers=32)
 
     dp = updater.dispatcher
 
@@ -337,8 +362,8 @@ def main():
         updater.start_polling()
     else:
         updater.start_webhook(listen="0.0.0.0",
-                            port=port,
-                            url_path=token)
+                              port=port,
+                              url_path=token)
         updater.bot.set_webhook(webhook + token)
 
     updater.idle()
