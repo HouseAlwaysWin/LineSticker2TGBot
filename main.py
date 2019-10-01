@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
 config = configparser.ConfigParser()
 config.read("config.ini")
 
-SET_STICKER_TITLE, MENU, LINE_STICKER_TRANSFER, SET_LANG = range(4)
+SET_STICKER_TITLE, MENU, LINE_STICKER_CONVERT, SET_LANG = range(4)
 
 LINE, CANCEL, LANG, BACK = range(4)
 
@@ -49,7 +49,7 @@ def set_start_keyboard():
     start_markup = InlineKeyboardMarkup(
         [
             [InlineKeyboardButton(
-                current_lang["line_sticker_transfer_btn"], callback_data=str(LINE)),
+                current_lang["line_sticker_convert_btn"], callback_data=str(LINE)),
                 InlineKeyboardButton(
                 current_lang["language_setting"], callback_data=str(LANG)),
              ]
@@ -123,11 +123,11 @@ def back_to_start(update, context):
 
 
 @run_async
-def line_sticker_transfer(update, context):
+def line_sticker_convert(update, context):
     try:
         nums = re.findall('\d+', update.message.text)
         if len(nums) == 0:
-            return LINE_STICKER_TRANSFER
+            return LINE_STICKER_convert
 
         sticker_url = config["Default"]["LineStickerUrl"]
         resp = ''
@@ -142,19 +142,19 @@ def line_sticker_transfer(update, context):
             update.message.reply_text(
                 current_lang["give_me_correct_line_link"]
             )
-            return LINE_STICKER_TRANSFER
+            return LINE_STICKER_convert
 
         files = []
         process_count = 0
         update.message.reply_text(
-            current_lang["start_transfering"])
+            current_lang["start_converting"])
 
         with zipfile.ZipFile(BytesIO(resp.content)) as archive:
             file_list = [file for file in archive.infolist(
             ) if re.match('^\d+@2x.png', file.filename)]
             total_process_count = len(file_list)
-            transfer_processing_start = update.message.reply_text(
-                current_lang["transfer_processing_start"])
+            convert_processing_start = update.message.reply_text(
+                current_lang["convert_processing_start"])
             for entry in file_list:
                 with archive.open(entry) as file:
                     img = Image.open(file)
@@ -168,13 +168,13 @@ def line_sticker_transfer(update, context):
                     files.append(file)
                     process_count += 1
                     context.bot.edit_message_text(
-                        chat_id=transfer_processing_start.chat_id,
-                        message_id=transfer_processing_start.message_id,
-                        text=current_lang["transfer_processing"].format(
+                        chat_id=convert_processing_start.chat_id,
+                        message_id=convert_processing_start.message_id,
+                        text=current_lang["convert_processing"].format(
                             '%.2f' % ((process_count/total_process_count)*100))
                     )
         update.message.reply_text(
-            current_lang["transfer_finish"])
+            current_lang["convert_finish"])
         emoji = 0x1f601
         emostr = struct.pack('<I', emoji).decode('utf-32le')
         botname = config["Default"]["BotName"]
@@ -265,7 +265,7 @@ def set_line_sticker_title(update, context):
         reply_markup=back_markup
     )
 
-    return LINE_STICKER_TRANSFER
+    return LINE_STICKER_CONVERT
 
 
 @run_async
@@ -294,7 +294,7 @@ def line_sticker(update, context):
         text=current_lang["send_me_line_sticker_msg"],
     )
 
-    return LINE_STICKER_TRANSFER
+    return LINE_STICKER_CONVERT
 
 
 @run_async
@@ -302,7 +302,7 @@ def line_sticker_error(update, context):
     update.message.reply_text(
         current_lang["give_me_correct_line_link"]
     )
-    return LINE_STICKER_TRANSFER
+    return LINE_STICKER_CONVERT
 
 
 @run_async
@@ -329,13 +329,13 @@ def main():
                 CallbackQueryHandler(
                     lang_choose, pattern='^' + str(LANG) + '$'),
             ],
-            LINE_STICKER_TRANSFER: [
+            LINE_STICKER_CONVERT: [
                 MessageHandler(
-                    Filters.regex('https://store.line.me/stickershop/product/\d+/.*'), line_sticker_transfer),
+                    Filters.regex('https://store.line.me/stickershop/product/\d+/.*'), line_sticker_convert),
                 MessageHandler(
-                    Filters.regex('https://store.line.me/officialaccount/event/sticker/\d+/.*'), line_sticker_transfer),
+                    Filters.regex('https://store.line.me/officialaccount/event/sticker/\d+/.*'), line_sticker_convert),
                 MessageHandler(
-                    Filters.regex('https://line.me/S/sticker/\d+/.*'), line_sticker_transfer),
+                    Filters.regex('https://line.me/S/sticker/\d+/.*'), line_sticker_convert),
                 CallbackQueryHandler(
                     back_to_start, pattern='^' + str(BACK) + '$'),
                 MessageHandler(Filters.regex('.*'), line_sticker_error)],
