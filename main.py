@@ -127,7 +127,7 @@ def line_sticker_convert(update, context):
     try:
         nums = re.findall('\d+', update.message.text)
         if len(nums) == 0:
-            return LINE_STICKER_convert
+            return LINE_STICKER_CONVERT
 
         sticker_url = config["Default"]["LineStickerUrl"]
         resp = ''
@@ -142,7 +142,7 @@ def line_sticker_convert(update, context):
             update.message.reply_text(
                 current_lang["give_me_correct_line_link"]
             )
-            return LINE_STICKER_convert
+            return LINE_STICKER_CONVERT
 
         files = []
         process_count = 0
@@ -158,7 +158,10 @@ def line_sticker_convert(update, context):
             for entry in file_list:
                 with archive.open(entry) as file:
                     img = Image.open(file)
-                    img_resize = img.resize((512, 512))
+                    base_w = 512
+                    w_percent = (base_w/float(img.size[0]))
+                    h_size = int((float(img.size[1])*float(w_percent)))
+                    img_resize = img.resize((base_w, h_size),Image.ANTIALIAS)
                     buff = BytesIO()
                     img_resize.save(buff, "png")
                     buff.seek(0)
