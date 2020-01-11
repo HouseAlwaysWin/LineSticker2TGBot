@@ -10,7 +10,7 @@ Open config.ini and setting your telegram bot apikey and botname up,
 the option Webhook config is optional, if it's empty than It's will run by polling.  
 More detail about Telegram Bot please see: https://core.telegram.org/bots
 
-Than run the script  
+Then run the script  
 Install all package requirements:
 ```shell
 $ pip install -r requirements.txt
